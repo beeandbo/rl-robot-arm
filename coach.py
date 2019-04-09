@@ -15,11 +15,11 @@ class Coach():
             experiences.append(Experience(state, action, reward, next_state, done))
         return experiences
 
-    def run_episode(self, steps_per_episode):
+    def run_episode(self):
         env_info = self.env.reset(train_mode=True)[self.brain_name]
         states = env_info.vector_observations
         reward_history = []
-        for i in range(steps_per_episode):
+        while True:
             actions = self.agent.act(states)
             env_info = self.env.step(actions)[self.brain_name]
             next_states = env_info.vector_observations
@@ -30,6 +30,7 @@ class Coach():
                 self.agent.learn(experience)
             if dones[0]:
                 break
+            states = next_states
 
         self.agent.end_episode()
         return np.array(reward_history).sum(0).mean()
@@ -45,8 +46,8 @@ class Coach():
         print("\rEpisode: {}, Mean: {}, Max: {}, Last: {}".format(episode, mean_reward, max_reward, rewards[-1]), end=end)
 
 
-    def run_episodes(self, num_episodes, steps_per_episode):
+    def run_episodes(self, num_episodes):
         rewards = []
         for i in range(num_episodes):
-            rewards.append(self.run_episode(steps_per_episode))
+            rewards.append(self.run_episode())
             self.diagnostic(i, rewards, 20)

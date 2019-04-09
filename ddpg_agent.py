@@ -10,12 +10,13 @@ from ornstein_uhlenbeck_process import OrnsteinUhlenbeckProcess
 
 REPLAY_BUFFER_SIZE = 10**6
 BATCH_SIZE = 64
-STEPS_BETWEEN_TRAINING = 1 * 20 # 20 agents for 20 steps
-ITERATIONS_PER_TRAINING = 1
+STEPS_BETWEEN_TRAINING = 20 * 20 # 20 agents for 20 steps
+ITERATIONS_PER_TRAINING = 10
 GAMMA = 0.99
-ACTOR_LEARNING_RATE = 10.**-4
-CRITIC_LEARNING_RATE = 10.**-3
+ACTOR_LEARNING_RATE = 1e-4
+CRITIC_LEARNING_RATE = 3e-4
 TAU = 0.001 # Rate at which target networks are updated
+CRITIC_WEIGHT_DECAY = 0.0001
 
 # Random process parameters
 RANDOM_THETA = 0.15
@@ -36,9 +37,9 @@ class DDPGAgent():
         # Critic
         self.local_critic_network = CriticNetwork(state_size, action_size)
         self.target_critic_network = CriticNetwork(state_size, action_size)
-        self.critic_optimizer = optim.Adam(self.local_critic_network.parameters(), lr=CRITIC_LEARNING_RATE)
+        self.critic_optimizer = optim.Adam(self.local_critic_network.parameters(), lr=CRITIC_LEARNING_RATE, weight_decay=CRITIC_WEIGHT_DECAY)
 
-        self.replay_buffer = ReplayBuffer(action_size, REPLAY_BUFFER_SIZE, BATCH_SIZE, None)
+        self.replay_buffer = ReplayBuffer(action_size, REPLAY_BUFFER_SIZE, None)
         self.steps = 0
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.random_process = OrnsteinUhlenbeckProcess((num_agents, action_size), sigma=RANDOM_SIGMA, theta=RANDOM_THETA)
@@ -80,28 +81,29 @@ class DDPGAgent():
             target.data.copy_(TAU*local.data + (1.0-TAU)*target.data)
 
     def train(self, experiences):
+        print("Training")
         states, actions, rewards, next_states, dones = self.vectorize_experiences(experiences)
         #states = self.normalize(states)
         #next_states = self.normalize(next_states)
 
         # Use the target critic network to calculate a target q value
-        next_actions = self.target_actor_network.forward(next_states)
-        q_target = rewards + GAMMA * self.target_critic_network.forward(next_states, next_actions) * (1-dones)
-        q_target = q_target.detach()
+        next_actions = self.target_actor_network(next_states)
+        q_target = rewards + GAMMA * self.target_critic_network(next_states, next_actions) * (1-dones)
 
         # Calculate the predicted q value
-        q_predicted = self.local_critic_network.forward(states, actions)
+        q_predicted = self.local_critic_network(states, actions)
 
         # Update critic network
         critic_loss = F.mse_loss(q_predicted, q_target)
-        self.local_critic_network.zero_grad()
+        self.critic_optimizer.zero_grad()
         critic_loss.backward()
+        torch.nn.utils.clip_grad_norm(self.local_critic_network.parameters(), 1)
         self.critic_optimizer.step()
 
         # Update predicted action using policy gradient
-        actions_predicted = self.local_actor_network.forward(states)
-        policy_loss = -self.local_critic_network.forward(states, actions_predicted).mean()
-        self.local_actor_network.zero_grad()
+        actions_predicted = self.local_actor_network(states)
+        policy_loss = -self.local_critic_network(states, actions_predicted).mean()
+        self.actor_optimizer.zero_grad()
         policy_loss.backward()
         self.actor_optimizer.step()
 

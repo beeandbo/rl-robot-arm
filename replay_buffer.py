@@ -4,7 +4,7 @@ import random
 class ReplayBuffer:
     """Fixed-size buffer to store experience tuples."""
 
-    def __init__(self, action_size, buffer_size, batch_size, seed):
+    def __init__(self, action_size, buffer_size, seed):
         """Initialize a ReplayBuffer object.
 
         Params
