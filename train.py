@@ -1,5 +1,6 @@
 from unityagents import UnityEnvironment
 import ddpg_agent
+import coach
 
 def main():
     env = UnityEnvironment(file_name="./Reacher.app")
@@ -18,5 +19,9 @@ def main():
 
     num_agents = len(env_info.agents)
     print('Number of agents:', num_agents)
+
+    _agent = ddpg_agent.DDPGAgent(state_size, action_size, num_agents)
+    _coach = coach.Coach(_agent, env)
+    _coach.run_episodes(1000, 1000)
 
 main()
