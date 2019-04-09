@@ -18,14 +18,14 @@ class Coach():
     def run_episode(self):
         env_info = self.env.reset(train_mode=True)[self.brain_name]
         states = env_info.vector_observations
-        reward_history = []
+        scores = np.zeros(len(states))
         while True:
             actions = self.agent.act(states)
             env_info = self.env.step(actions)[self.brain_name]
             next_states = env_info.vector_observations
             rewards = env_info.rewards
             dones = env_info.local_done
-            reward_history.append(rewards)
+            scores += rewards
             for experience in self.to_experiences(states, actions, next_states, rewards, dones):
                 self.agent.learn(experience)
             if dones[0]:
@@ -33,21 +33,21 @@ class Coach():
             states = next_states
 
         self.agent.end_episode()
-        return np.array(reward_history).sum(0).mean()
+        return scores.mean()
 
-    def diagnostic(self, episode, rewards, average_rewards_over):
-        reward_window = rewards[-average_rewards_over:]
-        mean_reward = np.mean(reward_window)
-        max_reward = np.max(reward_window)
+    def diagnostic(self, episode, scores, average_scores_over):
+        score_window = scores[-average_scores_over:]
+        mean_score = np.mean(score_window)
+        max_score = np.max(score_window)
         if (episode + 1) % 20 == 0:
             end = "\n"
         else:
             end = ""
-        print("\rEpisode: {}, Mean: {}, Max: {}, Last: {}".format(episode, mean_reward, max_reward, rewards[-1]), end=end)
+        print("\rEpisode: {}, Mean: {}, Max: {}, Last: {}".format(episode, mean_score, max_score, scores[-1]), end=end)
 
 
     def run_episodes(self, num_episodes):
-        rewards = []
+        scores = []
         for i in range(num_episodes):
-            rewards.append(self.run_episode())
-            self.diagnostic(i, rewards, 20)
+            scores.append(self.run_episode())
+            self.diagnostic(i, scores, 20)

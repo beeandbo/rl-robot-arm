@@ -53,6 +53,7 @@ class DDPGAgent():
         if not eval:
             actions = actions + self.random_process.sample()
         actions = np.clip(actions, -1, 1)
+        #print(actions)
         return actions
 
     def vectorize_experiences(self, experiences):
@@ -81,7 +82,6 @@ class DDPGAgent():
             target.data.copy_(TAU*local.data + (1.0-TAU)*target.data)
 
     def train(self, experiences):
-        print("Training")
         states, actions, rewards, next_states, dones = self.vectorize_experiences(experiences)
         #states = self.normalize(states)
         #next_states = self.normalize(next_states)
