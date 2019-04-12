@@ -8,14 +8,32 @@ import torch.optim as optim
 import torch.nn.functional as F
 from ornstein_uhlenbeck_process import OrnsteinUhlenbeckProcess
 
+# Size of the replay buffer storing past experiences for training
 REPLAY_BUFFER_SIZE = 10**6
-BATCH_SIZE = 64
-STEPS_BETWEEN_TRAINING = 20 * 20 # 20 agents for 20 steps
+
+# Number of experiences to use per training minibatch
+BATCH_SIZE = 128
+
+# Number of steps taken between each round of training.  Each agent
+# action is considered a step (so 20 simultaneous agents acting mean 20 steps)
+STEPS_BETWEEN_TRAINING = 10 * 20 # 20 agents for 20 steps
+
+# Perform training this many times per rouund
 ITERATIONS_PER_TRAINING = 10
+
+# Reward decay
 GAMMA = 0.99
+
+# Learning rate for the actor network
 ACTOR_LEARNING_RATE = 1e-4
-CRITIC_LEARNING_RATE = 3e-4
-TAU = 0.001 # Rate at which target networks are updated
+
+# Learning rate for the critic network
+CRITIC_LEARNING_RATE = 1e-3
+
+# Rate at which target networks are updated
+TAU = 0.001
+
+# Weight decay term used for training the critic network
 CRITIC_WEIGHT_DECAY = 0.0001
 
 # Random process parameters
@@ -25,6 +43,7 @@ RANDOM_SIGMA = 0.2
 
 class DDPGAgent():
     def __init__(self, state_size, action_size, num_agents):
+        
         self.state_size = state_size
         self.action_size = action_size
         self.num_agents = num_agents
@@ -45,12 +64,12 @@ class DDPGAgent():
         self.random_process = OrnsteinUhlenbeckProcess((num_agents, action_size), sigma=RANDOM_SIGMA, theta=RANDOM_THETA)
 
 
-    def act(self, states, eval = False):
+    def act(self, states, noise = True):
         self.local_actor_network.eval()
         with torch.no_grad():
             actions = self.local_actor_network(torch.tensor(states, dtype=torch.float32)).detach().numpy()
         self.local_actor_network.train()
-        if not eval:
+        if noise:
             actions = actions + self.random_process.sample()
         actions = np.clip(actions, -1, 1)
         #print(actions)
@@ -75,7 +94,7 @@ class DDPGAgent():
     def normalize(self, to_normalize):
         std = to_normalize.std(0)
         mean = to_normalize.mean(0)
-        return (to_normalize - mean)/std
+        return (to_normalize - mean)/(std + 1e-5)
 
     def soft_update(self, target_parameters, local_parameters):
         for target, local in zip(target_parameters, local_parameters):
@@ -85,6 +104,7 @@ class DDPGAgent():
         states, actions, rewards, next_states, dones = self.vectorize_experiences(experiences)
         #states = self.normalize(states)
         #next_states = self.normalize(next_states)
+        rewards = self.normalize(rewards)
 
         # Use the target critic network to calculate a target q value
         next_actions = self.target_actor_network(next_states)
@@ -95,16 +115,19 @@ class DDPGAgent():
 
         # Update critic network
         critic_loss = F.mse_loss(q_predicted, q_target)
+        #print(critic_loss)
         self.critic_optimizer.zero_grad()
         critic_loss.backward()
-        torch.nn.utils.clip_grad_norm(self.local_critic_network.parameters(), 1)
+        torch.nn.utils.clip_grad_norm_(self.local_critic_network.parameters(), 1)
         self.critic_optimizer.step()
 
         # Update predicted action using policy gradient
         actions_predicted = self.local_actor_network(states)
+        #print(self.local_critic_network(states, actions_predicted).mean())
         policy_loss = -self.local_critic_network(states, actions_predicted).mean()
         self.actor_optimizer.zero_grad()
         policy_loss.backward()
+        #print(policy_loss)
         self.actor_optimizer.step()
 
         self.soft_update(self.target_actor_network.parameters(), self.local_actor_network.parameters())

@@ -22,6 +22,6 @@ def main():
 
     _agent = ddpg_agent.DDPGAgent(state_size, action_size, num_agents)
     _coach = coach.Coach(_agent, env)
-    _coach.run_episodes(1000)
+    _coach.run_episodes(1000, 1000)
 
 main()
