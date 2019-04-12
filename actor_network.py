@@ -3,6 +3,10 @@ import torch.nn.functional as functional
 import network
 
 class ActorNetwork(nn.Module):
+    """
+    The Actor network used by the DDPG agent.  It takes states as input
+    and produces an action vector as output.
+    """
     def __init__(self, state_dim, action_dim):
         super(ActorNetwork, self).__init__()
         self.input_norm = nn.BatchNorm1d(state_dim, affine=False)

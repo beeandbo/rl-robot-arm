@@ -7,6 +7,9 @@ import copy
 
 
 class OrnsteinUhlenbeckProcess():
+    """
+    Class for producing random values used to add noise to the agent.
+    """
     def __init__(self, size, theta=0.15, sigma=0.2, mu=0.):
         """Initialize parameters and noise process."""
         self.mu = mu * np.ones(size)

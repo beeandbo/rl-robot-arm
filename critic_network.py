@@ -4,6 +4,10 @@ import torch.nn.functional as functional
 import network
 
 class CriticNetwork(nn.Module):
+    """
+    Fully connected network for critic.  Takes in states and actions and
+    produces a Q-value.  Actions are only input into network in second layer.
+    """
     def __init__(self, state_dim, action_dim):
         super(CriticNetwork, self).__init__()
         self.fc1 = nn.Linear(state_dim, 400)

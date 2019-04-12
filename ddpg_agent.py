@@ -42,8 +42,25 @@ RANDOM_SIGMA = 0.2
 
 
 class DDPGAgent():
+    """
+    Deep deterministic policy gradient agent as described in
+    https://arxiv.org/abs/1509.02971.
+
+    This agent is meant to operate on low dimensional inputs, not raw pixels.
+
+    To use the agent, you can get action predictions using act(), and to teach
+    the agent, feed the results to learn.
+    """
     def __init__(self, state_size, action_size, num_agents):
-        
+        """ Initialize agent.
+
+        Params
+        ======
+        state_size (integer): Size of input state vector
+        action_size (integer): Size of action vector
+        num_agents (integer): Number of simultaneous agents in the environment
+        """
+
         self.state_size = state_size
         self.action_size = action_size
         self.num_agents = num_agents
@@ -65,6 +82,17 @@ class DDPGAgent():
 
 
     def act(self, states, noise = True):
+        """
+        Returns an action vector based on the current game state.
+
+        Params
+        ======
+        states (array_like): A matrix of game states (each row represents the
+            state of an agent)
+        noise (boolean): Add random noise to the predicted action.  Aids
+            exploration of the environment during training.
+        """
+
         self.local_actor_network.eval()
         with torch.no_grad():
             actions = self.local_actor_network(torch.tensor(states, dtype=torch.float32)).detach().numpy()
@@ -72,7 +100,6 @@ class DDPGAgent():
         if noise:
             actions = actions + self.random_process.sample()
         actions = np.clip(actions, -1, 1)
-        #print(actions)
         return actions
 
     def vectorize_experiences(self, experiences):
@@ -92,15 +119,36 @@ class DDPGAgent():
         return (states, actions, rewards, next_states, dones)
 
     def normalize(self, to_normalize):
+        """
+        Normalize the each row of the input along the 0 dimension using the
+        formula (value - mean)/std
+
+        Params
+        ======
+        to_normalize (array_like): Values to normalize
+        """
+
         std = to_normalize.std(0)
         mean = to_normalize.mean(0)
         return (to_normalize - mean)/(std + 1e-5)
 
     def soft_update(self, target_parameters, local_parameters):
+        """
+        Updates the given target network parameters with the local parameters
+        using a soft update strategy: tau * local + (1-tau) * target
+        """
+
         for target, local in zip(target_parameters, local_parameters):
             target.data.copy_(TAU*local.data + (1.0-TAU)*target.data)
 
     def train(self, experiences):
+        """
+        Trains the actor and critic networks using a minibatch of experiences
+
+        Params
+        ======
+        experiences (array_like of Experience): Minibatch of experiences
+        """
         states, actions, rewards, next_states, dones = self.vectorize_experiences(experiences)
         #states = self.normalize(states)
         #next_states = self.normalize(next_states)
@@ -134,6 +182,14 @@ class DDPGAgent():
         self.soft_update(self.target_critic_network.parameters(), self.local_critic_network.parameters())
 
     def learn(self, experience):
+        """
+        Tells the agent to learn from an experience.  This may not immediately
+        result in training since this agent uses a replay buffer.
+
+        Params
+        ======
+        experience (Experience): An experience used to teach the agent.
+        """
         self.replay_buffer.add(experience)
         self.steps += 1
         if self.steps % STEPS_BETWEEN_TRAINING == 0 and len(self.replay_buffer) >= BATCH_SIZE:
@@ -141,5 +197,8 @@ class DDPGAgent():
                 self.train(self.replay_buffer.sample(BATCH_SIZE))
 
     def end_episode(self):
+        """
+        Tell the agent that an episode is complete.
+        """
         self.random_process.reset()
         self.steps = 0
