@@ -30,7 +30,7 @@ class Coach():
             experiences.append(Experience(state, action, reward, next_state, done))
         return experiences
 
-    def run_episode(self, max_steps):
+    def run_episode(self, max_steps, train = True):
         """
         Executes a single episode.
 
@@ -39,11 +39,11 @@ class Coach():
         max_steps (integer): The maximum time steps to run in a single episode.
         """
 
-        env_info = self.env.reset(train_mode=True)[self.brain_name]
+        env_info = self.env.reset(train_mode=train)[self.brain_name]
         states = env_info.vector_observations
         scores = np.zeros(len(states))
         for i in range(max_steps):
-            actions = self.agent.act(states)
+            actions = self.agent.act(states, noise = train)
             env_info = self.env.step(actions)[self.brain_name]
             next_states = env_info.vector_observations
             rewards = env_info.rewards
@@ -79,7 +79,7 @@ class Coach():
         print("\rEpisode: {}, Mean: {}, Max: {}, Last: {}".format(episode, mean_score, max_score, scores[-1]), end=end)
 
 
-    def run_episodes(self, num_episodes, max_steps):
+    def run_episodes(self, num_episodes, max_steps, train = True):
         """
         Run a series of episodes.
 
@@ -88,8 +88,9 @@ class Coach():
         num_episodes (integer): Number of episodes to run
         max_steps (integer): Max steps per episode
         """
-        
+
         scores = []
         for i in range(num_episodes):
-            scores.append(self.run_episode(max_steps))
+            scores.append(self.run_episode(max_steps, train))
             self.diagnostic(i, scores, 20)
+        return scores
