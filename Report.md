@@ -20,15 +20,25 @@ The average score over the final 100 episodes was 34.91487921959162
 ### Hyperparameters
 
 REPLAY_BUFFER_SIZE = 10**6
+
 BATCH_SIZE = 128
+
 STEPS_BETWEEN_TRAINING = 10 * 20 # 20 agents for 20 steps
+
 ITERATIONS_PER_TRAINING = 10
+
 GAMMA = 0.99
+
 ACTOR_LEARNING_RATE = 1e-4
+
 CRITIC_LEARNING_RATE = 1e-3
+
 TAU = 0.001
+
 CRITIC_WEIGHT_DECAY = 0.0001
+
 RANDOM_THETA = 0.15
+
 RANDOM_SIGMA = 0.2
 
 ### Ideas for future work
