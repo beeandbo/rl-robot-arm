@@ -39,7 +39,7 @@ def main():
     parser.add_argument("--min_score", type=float, help="Only save the model if the it achieves this score", default=30.)
     parser.add_argument("--saveplot", help="Location to save plot of scores")
     parser.add_argument("--environment", help="Path to Unity environment for game (i.e. ./Reacher.App)", default="./Reacher.app")
-    parser.add_argument("--eval", help="Turns on eval mode, which affects the unity environment and removes the random noise from the predicted agent actions")
+    parser.add_argument("--eval", type=bool, help="Turns on eval mode, which affects the unity environment and removes the random noise from the predicted agent actions", default=False)
     args = parser.parse_args()
 
     env = UnityEnvironment(file_name=args.environment)
@@ -64,7 +64,7 @@ def main():
     if args.loadfrom:
         _agent.load(args.loadfrom)
     _coach = coach.Coach(_agent, env)
-    scores = _coach.run_episodes(args.episodes, args.max_steps)
+    scores = _coach.run_episodes(args.episodes, args.max_steps, train=not args.eval)
     mean_score = np.mean(scores[-100:])
 
     # Save the network if successful
